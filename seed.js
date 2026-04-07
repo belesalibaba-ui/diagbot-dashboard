@@ -20,16 +20,13 @@ async function seed() {
       await db.license.create({
         data: { userId: user.id, licenseKey: key, licenseType: 'lifetime', status: 'active', expiresAt: '2099-12-31T23:59:59.000Z', maxDevices: 999 }
       });
-      console.log('Admin created: admin@diagbot.com / Admin123!');
+      console.log('Seed OK: admin@diagbot.com');
     } else {
-      await db.license.updateMany({
-        where: { userId: existing.id },
-        data: { licenseType: 'lifetime', status: 'active', expiresAt: '2099-12-31T23:59:59.000Z', maxDevices: 999 }
-      });
-      console.log('Admin license updated');
+      console.log('Admin already exists');
     }
   } catch (e) {
     console.error('Seed error:', e.message);
+    process.exit(1);
   }
   await db.$disconnect();
 }
