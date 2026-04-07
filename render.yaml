@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: diagbot-dashboard
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npx prisma generate && npm run build
+    startCommand: node server.js
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: diagbot-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+    autoInit: true
+
+databases:
+  - name: diagbot-db
+    plan: free
+    region: frankfurt
+    databaseName: diagbot
