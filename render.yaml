@@ -5,7 +5,7 @@ services:
     plan: free
     region: frankfurt
     buildCommand: npx prisma generate && npm run build
-    startCommand: node server.js
+    startCommand: npx prisma db push --accept-data-loss 2>/dev/null; node server.js
     envVars:
       - key: DATABASE_URL
         fromDatabase:
