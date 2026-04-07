@@ -6,24 +6,186 @@ export default function IndirPage() {
   const [downloaded, setDownloaded] = useState(false)
 
   const handleDownload = () => {
+    const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://xentry-diagbot-pro.onrender.com'
+
     const batContent = `@echo off
-title XENTRY DiagBot Pro - Kurulum
+setlocal enabledelayedexpansion
+chcp 65001 >nul 2>&1
+title XENTRY DiagBot Pro - Kurulum Sihirbazi
 color 0A
+mode con: cols=70 lines=35
+
+:: ============================================
+:: XENTRY DiagBot Pro v2.2.0 Kurulum Scripti
+:: ============================================
+
+set "APP_NAME=XENTRY DiagBot Pro"
+set "APP_URL=${appUrl}"
+set "SHORTCUT_NAME=XENTRY DiagBot Pro"
+set "STARTMENU_FOLDER=XENTRY DiagBot Pro"
+
 echo.
-echo  ============================================
-echo   XENTRY DiagBot Pro Kurulum Sihirbazi
-echo  ============================================
+echo  ╔══════════════════════════════════════════════╗
+echo  ║     XENTRY DiagBot Pro Kurulum Sihirbazi    ║
+echo  ║           Surum v2.2.0                      ║
+echo  ╚══════════════════════════════════════════════╝
 echo.
-echo  [1/3] Dosyalar hazirlaniyor...
-timeout /t 2 >nul
-echo  [2/3] Bilesenler yukleniyor...
-timeout /t 2 >nul
-echo  [3/3] Kurulum tamamlandi!
+echo  Mercedes-Benz Otonom Teshis Sistemi
 echo.
-echo  XENTRY DiagBot Pro basariyla kuruldur.
-echo  Uygulamayi baslatmak icin masaustu kisayolunu kullanin.
+
+:: --- ADMiN KONTROLU ---
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+    color 0C
+    echo  [HATA] Bu kurulum yonetici haklari gerektirir!
+    echo.
+    echo  Lutfen dosyaya sag tiklayip ^"Yonetici olarak calistir^" secin.
+    echo.
+    pause
+    exit /b 1
+)
+echo  [OK] Yonetici haklari dogrulandi.
 echo.
-pause
+
+:: --- ADIM 1: KLASOR OLUŞTURMA ---
+echo  [1/6] Kurulum klasoru olusturuluyor...
+set "INSTALL_DIR=%ProgramFiles%\\XENTRY DiagBot Pro"
+if not exist "!INSTALL_DIR!" (
+    mkdir "!INSTALL_DIR!"
+    echo         [OK] Klasor olusturuldu: !INSTALL_DIR!
+) else (
+    echo         [OK] Klasor zaten mevcut.
+)
+echo.
+
+:: --- ADIM 2: VBS KISAYOL OLUSTURUCU YAZ ---
+echo  [2/6] Kisayol olusturucu hazirlaniyor...
+set "VBS_FILE=%TEMP%\\create_shortcut.vbs"
+
+(
+echo Set WshShell = WScript.CreateObject^("WScript.Shell"^)
+echo strDesktop = WshShell.SpecialFolders^("Desktop"^)
+echo Set oShellLink = WshShell.CreateShortcut^(strDesktop ^& "\\${SHORTCUT_NAME}.lnk"^)
+echo oShellLink.TargetPath = "!APP_URL!"
+echo oShellLink.Arguments = ""
+echo oShellLink.WindowStyle = 1
+echo oShellLink.IconLocation = "shell32.dll,14"
+echo oShellLink.Description = "${APP_NAME} - Mercedes-Benz Teshis Sistemi"
+echo oShellLink.Save
+echo.
+echo strStartMenu = WshShell.SpecialFolders^("AllUsersStartMenu"^)
+echo strSMFolder = strStartMenu ^& "\\${STARTMENU_FOLDER}"
+echo.
+echo Set fso = CreateObject^("Scripting.FileSystemObject"^)
+echo If Not fso.FolderExists^(strSMFolder^) Then
+echo     fso.CreateFolder strSMFolder
+echo End If
+echo.
+echo Set oStartLink = WshShell.CreateShortcut^(strSMFolder ^& "\\${SHORTCUT_NAME}.lnk"^)
+echo oStartLink.TargetPath = "!APP_URL!"
+echo oStartLink.Arguments = ""
+echo oStartLink.WindowStyle = 1
+echo oStartLink.IconLocation = "shell32.dll,14"
+echo oStartLink.Description = "${APP_NAME} - Mercedes-Benz Teshis Sistemi"
+echo oStartLink.Save
+echo.
+echo Set oUninstallLink = WshShell.CreateShortcut^(strSMFolder ^& "\\${APP_NAME} Kaldir.lnk"^)
+echo oUninstallLink.TargetPath = "cmd.exe"
+echo oUninstallLink.Arguments = "/c \\"%%ProgramFiles%%\\XENTRY DiagBot Pro\\uninstall.bat\\"" 
+echo oUninstallLink.WindowStyle = 1
+echo oUninstallLink.IconLocation = "shell32.dll,15"
+echo oUninstallLink.Description = "${APP_NAME} Kaldir"
+echo oUninstallLink.Save
+echo.
+echo WScript.Echo "SHORTCUTS_CREATED"
+) > "!VBS_FILE!"
+echo         [OK] VBS script yazildi.
+echo.
+
+:: --- ADIM 3: MASAUSTU KISAYOLU ---
+echo  [3/6] Masaustu kisayolu olusturuluyor...
+cscript //nologo "!VBS_FILE!" > "%TEMP%\\shortcut_result.txt" 2>&1
+findstr /C:"SHORTCUTS_CREATED" "%TEMP%\\shortcut_result.txt" >nul 2>&1
+if %errorLevel% equ 0 (
+    echo         [OK] Masaustu kisayolu basariyla olusturuldu.
+) else (
+    echo         [UYARI] Kisayol olusturulurken bir sorun olustu.
+    echo         Manuel olarak: %APP_URL% adresine gidin.
+)
+echo.
+
+:: --- ADIM 4: BASLAT MENUSU GIRISI ---
+echo  [4/6] Baslat menusu girisi olusturuluyor...
+set "STARTMENU_PATH=%ProgramData%\\Microsoft\\Windows\\Start Menu\\Programs\\${STARTMENU_FOLDER}"
+if exist "!STARTMENU_PATH!\\${SHORTCUT_NAME}.lnk" (
+    echo         [OK] Baslat menusu girisi basariyla olusturuldu.
+) else (
+    echo         [UYARI] Baslat menusu girisi olusturulamadi.
+)
+echo.
+
+:: --- ADIM 5: FAVICON IKON INDIRME ---
+echo  [5/6] Uygulama ikonu indiriliyor...
+set "ICON_PATH=!INSTALL_DIR!\\favicon.ico"
+powershell -NoProfile -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '${appUrl}/favicon.ico' -OutFile '!ICON_PATH!' -UseBasicParsing -TimeoutSec 10; Write-Host 'ICON_OK' } catch { Write-Host 'ICON_FAIL' }" > "%TEMP%\\icon_result.txt" 2>&1
+findstr /C:"ICON_OK" "%TEMP%\\icon_result.txt" >nul 2>&1
+if %errorLevel% equ 0 (
+    echo         [OK] Ikon basariyla indirildi.
+) else (
+    echo         [INFO] Ikon indirilemedi - varsayilan ikon kullanilacak.
+)
+echo.
+
+:: --- ADIM 6: KALDIRMA SCRIPTI OLUSTUR ---
+echo  [6/6] Kaldirma scripti olusturuluyor...
+(
+echo @echo off
+echo chcp 65001 ^>nul 2^>^&1
+echo title ${APP_NAME} - Kaldirma
+echo echo.
+echo echo  ${APP_NAME} kaldiriliyor...
+echo echo.
+echo timeout /t 2 ^>nul
+echo del /f /q "%%Desktop%%\\${SHORTCUT_NAME}.lnk" 2^>nul
+echo rd /s /q "%%ProgramData%%\\Microsoft\\Windows\\Start Menu\\Programs\\${STARTMENU_FOLDER}" 2^>nul
+echo rd /s /q "%ProgramFiles%\\XENTRY DiagBot Pro" 2^>nul
+echo echo  [OK] ${APP_NAME} basariyla kaldirildi.
+echo echo.
+echo pause
+) > "!INSTALL_DIR!\\uninstall.bat"
+echo         [OK] Kaldirma scripti olusturuldu.
+echo.
+
+:: --- TEMIZLIK ---
+del /f /q "!VBS_FILE!" >nul 2>&1
+del /f /q "%TEMP%\\shortcut_result.txt" >nul 2>&1
+del /f /q "%TEMP%\\icon_result.txt" >nul 2>&1
+
+:: --- KURULUM TAMAMLANDI ---
+echo  ╔══════════════════════════════════════════════╗
+echo  ║          KURULUM BASARIYLA TAMAMLANDI!       ║
+echo  ╚══════════════════════════════════════════════╝
+echo.
+echo  Olusturulan kisayollar:
+echo    [+] Masaustu: ${SHORTCUT_NAME}.lnk
+echo    [+] Baslat Menusu: ${STARTMENU_FOLDER}\\
+echo    [+] Kurulum Dizini: ${INSTALL_DIR}
+echo    [+] Kaldirma: ${INSTALL_DIR}\\uninstall.bat
+echo.
+echo  Uygulamayi baslatmak icin masaustu kisayoluna
+echo  cift tiklayabilirsiniz.
+echo.
+echo  Simdi uygulamayi acmak ister misiniz? ^(E/H^)
+echo.
+choice /c EH /n /m "  Seciminiz [E=Ac, H=Kapat]: "
+if %errorlevel% equ 1 (
+    start "" "${appUrl}"
+)
+echo.
+echo  Tesekkurler! XENTRY DiagBot Pro'yu sectiginiz icin.
+echo.
+timeout /t 5 >nul
+exit /b 0
 `
     const blob = new Blob([batContent], { type: 'application/bat' })
     const url = URL.createObjectURL(blob)
@@ -60,9 +222,12 @@ pause
           </div>
 
           <h2 className="text-xl font-semibold text-white mb-2">KURULUM DOSYASI</h2>
-          <p className="text-slate-400 text-sm mb-6">
+          <p className="text-slate-400 text-sm mb-4">
             XENTRY DiagBot Pro masaustu uygulamasini kurmak icin asagidaki butona tiklayin.
           </p>
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4 text-amber-300 text-xs text-left">
+            <span className="font-semibold">⚠ Onemli:</span> Indirdikten sonra KURULUM.bat dosyasina sag tiklayip <strong>"Yonetici olarak calistir"</strong> secin. Masaustu ve Baslat menusu kisayollari olusturulacaktir.
+          </div>
 
           {!downloaded ? (
             <button
