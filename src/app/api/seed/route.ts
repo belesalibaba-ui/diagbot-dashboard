@@ -4,9 +4,16 @@ import { hashPassword, generateSalt, generateLicenseKey } from '@/lib/crypto'
 
 export async function POST() {
   try {
-    const existing = await db.user.findUnique({ where: { email: 'admin@diagbot.com' } })
-    if (existing) {
-      return NextResponse.json({ message: 'Admin zaten mevcut' })
+    let user = await db.user.findUnique({ where: { email: 'admin@diagbot.com' } })
+
+    if (user) {
+      // Mevcut admin lisansını sınırsız güncelle
+      const expiresAt = new Date('2099-12-31T23:59:59Z')
+      await db.license.updateMany({
+        where: { userId: user.id },
+        data: { licenseType: 'lifetime', status: 'active', expiresAt, maxDevices: 999 }
+      })
+      return NextResponse.json({ message: 'Admin lisansı sınırsız olarak güncellendi' })
     }
 
     const salt = generateSalt()
@@ -24,17 +31,16 @@ export async function POST() {
       }
     })
 
-    const expiresAt = new Date()
-    expiresAt.setFullYear(expiresAt.getFullYear() + 1)
+    const expiresAt = new Date('2099-12-31T23:59:59Z')
 
     await db.license.create({
       data: {
         userId: admin.id,
         licenseKey,
-        licenseType: 'yearly',
+        licenseType: 'lifetime',
         status: 'active',
         expiresAt,
-        maxDevices: 10
+        maxDevices: 999
       }
     })
 
