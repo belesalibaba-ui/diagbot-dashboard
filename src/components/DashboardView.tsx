@@ -52,7 +52,7 @@ interface Session {
 }
 
 export default function DashboardView() {
-  const { user } = useAuthStore()
+  const { user, setView } = useAuthStore()
   const [sessions, setSessions] = useState<Session[]>([])
   const [stats, setStats] = useState({
     totalSessions: 0,
@@ -149,13 +149,13 @@ export default function DashboardView() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button className="bg-gradient-to-r from-gray-600 to-gray-500 hover:from-gray-500 hover:to-gray-400 text-white font-medium rounded-xl shadow-lg shadow-gray-500/20 h-10">
+          <Button onClick={() => setView('sessions')} className="bg-gradient-to-r from-gray-600 to-gray-500 hover:from-gray-500 hover:to-gray-400 text-white font-medium rounded-xl shadow-lg shadow-gray-500/20 h-10">
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
             Yeni Tanı Başlat
           </Button>
-          <Button variant="outline" className="border-slate-600/50 text-slate-300 hover:bg-slate-800/50 hover:text-white rounded-xl h-10">
+          <Button onClick={() => setView('vehicles')} variant="outline" className="border-slate-600/50 text-slate-300 hover:bg-slate-800/50 hover:text-white rounded-xl h-10">
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
@@ -256,7 +256,7 @@ export default function DashboardView() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40 hover:border-slate-600/50 transition-colors cursor-pointer group">
+        <Card onClick={() => setView('sessions')} className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40 hover:border-slate-600/50 transition-colors cursor-pointer group">
           <CardContent className="p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-500/20 to-gray-600/10 border border-gray-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
               <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -269,7 +269,7 @@ export default function DashboardView() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40 hover:border-slate-600/50 transition-colors cursor-pointer group">
+        <Card onClick={() => setView('vehicles')} className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40 hover:border-slate-600/50 transition-colors cursor-pointer group">
           <CardContent className="p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
               <svg className="w-6 h-6 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -282,7 +282,7 @@ export default function DashboardView() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40 hover:border-slate-600/50 transition-colors cursor-pointer group">
+        <Card onClick={() => setView('sessions')} className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40 hover:border-slate-600/50 transition-colors cursor-pointer group">
           <CardContent className="p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
               <svg className="w-6 h-6 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>

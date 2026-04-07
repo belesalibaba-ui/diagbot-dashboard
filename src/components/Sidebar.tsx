@@ -308,7 +308,7 @@ function SidebarContent({
       {/* Navigation */}
       <nav className="flex-1 px-3 py-3 overflow-y-auto">
         <div className="space-y-1">
-          {allItems.map((item) => (
+          {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleNavClick(item)}
@@ -320,11 +320,6 @@ function SidebarContent({
             >
               <span className={isActive(item) ? 'text-gray-300' : 'text-slate-500'}>{item.icon}</span>
               <span>{item.label}</span>
-              {item.adminOnly && (
-                <Badge className="ml-auto bg-amber-500/10 text-amber-400 border-amber-500/20 text-[9px] px-1.5 py-0 h-4">
-                  Admin
-                </Badge>
-              )}
             </button>
           ))}
         </div>
@@ -336,6 +331,25 @@ function SidebarContent({
             <p className="px-3 text-[10px] uppercase tracking-wider text-slate-600 font-semibold mb-2">
               Yönetim
             </p>
+            <div className="space-y-1">
+              {adminItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                    isActive(item)
+                      ? 'bg-gradient-to-r from-gray-600/20 to-gray-500/10 text-white border border-gray-500/20'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'
+                  }`}
+                >
+                  <span className={isActive(item) ? 'text-gray-300' : 'text-slate-500'}>{item.icon}</span>
+                  <span>{item.label}</span>
+                  <Badge className="ml-auto bg-amber-500/10 text-amber-400 border-amber-500/20 text-[9px] px-1.5 py-0 h-4">
+                    Admin
+                  </Badge>
+                </button>
+              ))}
+            </div>
           </>
         )}
       </nav>
