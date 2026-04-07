@@ -6,6 +6,9 @@ import LoginView from '@/components/LoginView'
 import LicenseActivateView from '@/components/LicenseActivateView'
 import LicenseExpiredView from '@/components/LicenseExpiredView'
 import DashboardView from '@/components/DashboardView'
+import SessionsView from '@/components/SessionsView'
+import VehiclesView from '@/components/VehiclesView'
+import SettingsView from '@/components/SettingsView'
 import AdminView from '@/components/AdminView'
 import AdminUsersView from '@/components/AdminUsersView'
 import AdminLicensesView from '@/components/AdminLicensesView'
@@ -23,12 +26,10 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [])
 
-  // If not authenticated, show login
   if (!isAuthenticated || view === 'login') {
     return <LoginView />
   }
 
-  // If needs license
   if (view === 'license_activate') {
     return <LicenseActivateView />
   }
@@ -37,12 +38,14 @@ export default function Home() {
     return <LicenseExpiredView />
   }
 
-  // Authenticated views with sidebar
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
       <Sidebar />
       <main className="flex-1 p-4 sm:p-6 overflow-auto">
         {view === 'dashboard' && <DashboardView />}
+        {view === 'sessions' && <SessionsView />}
+        {view === 'vehicles' && <VehiclesView />}
+        {view === 'settings' && <SettingsView />}
         {view === 'admin' && <AdminView />}
         {view === 'admin_users' && <AdminUsersView />}
         {view === 'admin_licenses' && <AdminLicensesView />}

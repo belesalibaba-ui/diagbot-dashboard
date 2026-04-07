@@ -25,7 +25,7 @@ interface AuthState {
   user: User | null
   license: License | null
   isAuthenticated: boolean
-  view: 'login' | 'license_activate' | 'license_expired' | 'dashboard' | 'admin' | 'admin_users' | 'admin_licenses'
+  view: 'login' | 'license_activate' | 'license_expired' | 'dashboard' | 'sessions' | 'vehicles' | 'settings' | 'admin' | 'admin_users' | 'admin_licenses'
   setUser: (user: User | null) => void
   setLicense: (license: License | null) => void
   setView: (view: AuthState['view']) => void
