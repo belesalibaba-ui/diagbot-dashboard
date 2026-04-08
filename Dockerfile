@@ -29,6 +29,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="file:/data/diagbot.db"
+ENV PORT=10000
+ENV HOSTNAME="0.0.0.0"
 
 RUN mkdir -p /data
 
@@ -37,6 +39,6 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/db/diagbot.db /data/diagbot.db
 
-EXPOSE 3000
+EXPOSE 10000
 
 CMD ["node", "server.js"]
