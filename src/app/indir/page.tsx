@@ -187,13 +187,15 @@ echo.
 timeout /t 5 >nul
 exit /b 0
 `
-    const blob = new Blob([batContent], { type: 'application/bat' })
+    const blob = new Blob([batContent], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = 'KURULUM.bat'
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
     setDownloaded(true)
   }
 
