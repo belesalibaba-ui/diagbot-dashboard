@@ -308,7 +308,7 @@ function SidebarContent({
       {/* Navigation */}
       <nav className="flex-1 px-3 py-3 overflow-y-auto">
         <div className="space-y-1">
-          {navItems.map((item) => (
+          {allItems.filter(i => !i.adminOnly).map((item) => (
             <button
               key={item.id}
               onClick={() => handleNavClick(item)}
@@ -325,14 +325,14 @@ function SidebarContent({
         </div>
 
         {/* Admin separator */}
-        {isAdmin && (
+        {isAdmin && allItems.some(i => i.adminOnly) && (
           <>
             <Separator className="bg-slate-800/60 my-3" />
             <p className="px-3 text-[10px] uppercase tracking-wider text-slate-600 font-semibold mb-2">
               Yönetim
             </p>
             <div className="space-y-1">
-              {adminItems.map((item) => (
+              {allItems.filter(i => i.adminOnly).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item)}
