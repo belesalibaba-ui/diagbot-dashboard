@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/auth-store'
 import LoginView from '@/components/LoginView'
 import LicenseActivateView from '@/components/LicenseActivateView'
@@ -16,8 +16,10 @@ import Sidebar from '@/components/Sidebar'
 
 export default function Home() {
   const { view, isAuthenticated, checkLicenseStatus } = useAuthStore()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     checkLicenseStatus()
   }, [])
 
@@ -25,6 +27,15 @@ export default function Home() {
     const interval = setInterval(checkLicenseStatus, 60000)
     return () => clearInterval(interval)
   }, [])
+
+  // Wait for client-side hydration before showing auth-gated content
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-gray-500 border-t-white rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   if (!isAuthenticated || view === 'login') {
     return <LoginView />

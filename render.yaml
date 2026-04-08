@@ -9,7 +9,5 @@ services:
     dockerContext: .
     dockerfilePath: ./Dockerfile
     envVars:
-      - key: PORT
-        value: "3000"
       - key: NODE_ENV
         value: production
