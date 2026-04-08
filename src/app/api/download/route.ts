@@ -44,9 +44,25 @@ export async function GET() {
   L.push("if \"%PYTHON_EXE%\"==\"\" if exist \"C:\\Program Files\\Python311\\python.exe\" set \"PYTHON_EXE=C:\\Program Files\\Python311\\python.exe\"");
   L.push("if not \"%PYTHON_EXE%\"==\"\" goto :py_found");
   L.push("echo  Python bulunamadi - indiriliyor ve kuruluyor...");
-  L.push("echo  (3-5 dakika surebilir, lutfen bekleyin)");
+  L.push("echo  (3-5 dakika surebilir)");
   L.push("echo.");
-  L.push("powershell -NoProfile -ExecutionPolicy Bypass -Command \"$ErrorActionPreference='Stop';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$f=\"$env:TEMP\\py3124setup.exe\";Write-Host '  Indiriliyor...';Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.12.4/python-3.12.4-amd64.exe' -OutFile $f -UseBasicParsing -TimeoutSec 600;Write-Host '  Kuruluyor...';$p=Start-Process -FilePath $f -ArgumentList '/quiet','InstallAllUsers=1','PrependPath=1','Include_pip=1','TargetDir=C:\\Python312' -Wait -PassThru;Remove-Item $f -Force -ErrorAction SilentlyContinue;if(Test-Path 'C:\\Python312\\python.exe'){Write-Host '  [OK] Python kuruldu!'}else{Write-Host '  [HATA] Kurulum basarisiz. Cikis kodu:' $p.ExitCode}\"");
+
+  // Write a .ps1 file to handle Python install (avoids escaping issues)
+  L.push("set \"PS1=%TEMP%\\install_python.ps1\"");
+  L.push("echo $ErrorActionPreference = 'Stop' > \"%PS1%\"");
+  L.push("echo [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 >> \"%PS1%\"");
+  L.push("echo $url = 'https://www.python.org/ftp/python/3.12.4/python-3.12.4-amd64.exe' >> \"%PS1%\"");
+  L.push("echo $exe = Join-Path $env:TEMP 'py3124setup.exe' >> \"%PS1%\"");
+  L.push("echo Write-Host '  Indiriliyor...' >> \"%PS1%\"");
+  L.push("echo Invoke-WebRequest -Uri $url -OutFile $exe -UseBasicParsing -TimeoutSec 600 >> \"%PS1%\"");
+  L.push("echo Write-Host '  Kuruluyor...' >> \"%PS1%\"");
+  L.push("echo $proc = Start-Process -FilePath $exe -ArgumentList '/quiet','InstallAllUsers=1','PrependPath=1','Include_pip=1','TargetDir=C:\\Python312' -Wait -PassThru >> \"%PS1%\"");
+  L.push("echo Remove-Item $exe -Force -ErrorAction SilentlyContinue >> \"%PS1%\"");
+  L.push("echo if (Test-Path 'C:\\Python312\\python.exe') { Write-Host '  [OK] Python kuruldu!' } else { Write-Host '  [HATA] Kurulum basarisiz. Cikis:' $proc.ExitCode } >> \"%PS1%\"");
+  L.push("powershell -NoProfile -ExecutionPolicy Bypass -File \"%PS1%\"");
+  L.push("del /f /q \"%PS1%\" >nul 2>&1");
+
+  // Check after install
   L.push("if exist \"%PY_DIR%\\python.exe\" (");
   L.push("    set \"PYTHON_EXE=%PY_DIR%\\python.exe\"");
   L.push("    goto :py_found");
@@ -54,10 +70,11 @@ export async function GET() {
   L.push("echo.");
   L.push("echo  [HATA] Python kurulamadi.");
   L.push("echo  Manuel: https://www.python.org/downloads/");
-  L.push("echo  Kurulumda 'Add Python to PATH' isaretleyin, sonra tekrar deneyin.");
+  L.push("echo  Kurulumda 'Add Python to PATH' isaretleyin.");
   L.push("echo.");
   L.push("pause");
   L.push("exit /b 1");
+
   L.push(":py_found");
   L.push("echo  [OK] %PYTHON_EXE%");
   L.push("\"%PYTHON_EXE%\" --version 2>nul");
@@ -85,15 +102,23 @@ export async function GET() {
   // ===== STEP 4: DOWNLOAD FILES =====
   L.push("echo  [4/7] Dosyalar indiriliyor...");
   const b = appUrl;
-  L.push("powershell -NoProfile -ExecutionPolicy Bypass -Command \"Invoke-WebRequest -Uri '" + b + "/api/agent/files/obd_scanner.py' -OutFile '%ADIR%\\obd_scanner.py' -UseBasicParsing -TimeoutSec 120\"");
-  L.push("powershell -NoProfile -ExecutionPolicy Bypass -Command \"Invoke-WebRequest -Uri '" + b + "/api/agent/files/screen_automator.py' -OutFile '%ADIR%\\screen_automator.py' -UseBasicParsing -TimeoutSec 120\"");
-  L.push("powershell -NoProfile -ExecutionPolicy Bypass -Command \"Invoke-WebRequest -Uri '" + b + "/api/agent/files/reporter.py' -OutFile '%ADIR%\\reporter.py' -UseBasicParsing -TimeoutSec 120\"");
-  L.push("powershell -NoProfile -ExecutionPolicy Bypass -Command \"Invoke-WebRequest -Uri '" + b + "/api/agent/files/xentry_agent.py' -OutFile '%ADIR%\\xentry_agent.py' -UseBasicParsing -TimeoutSec 120\"");
-  L.push("powershell -NoProfile -ExecutionPolicy Bypass -Command \"Invoke-WebRequest -Uri '" + b + "/api/agent/files/config.json' -OutFile '%ADIR%\\config.json' -UseBasicParsing -TimeoutSec 120\"");
-  L.push("echo  [OK]");
+
+  // Write a .ps1 to download all files at once
+  L.push("set \"DL1=%TEMP%\\download_files.ps1\"");
+  L.push("echo $base = '" + b + "' > \"%DL1%\"");
+  L.push("echo $dir = '%ADIR%' >> \"%DL1%\"");
+  L.push("echo $files = @('obd_scanner.py','screen_automator.py','reporter.py','xentry_agent.py','config.json') >> \"%DL1%\"");
+  L.push("echo foreach ($f in $files) { >> \"%DL1%\"");
+  L.push("echo     $url = \"$base/api/agent/files/$f\" >> \"%DL1%\"");
+  L.push("echo     $out = Join-Path $dir $f >> \"%DL1%\"");
+  L.push("echo     Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing -TimeoutSec 120 >> \"%DL1%\"");
+  L.push("echo } >> \"%DL1%\"");
+  L.push("echo Write-Host '  [OK]' >> \"%DL1%\"");
+  L.push("powershell -NoProfile -ExecutionPolicy Bypass -File \"%DL1%\"");
+  L.push("del /f /q \"%DL1%\" >nul 2>&1");
   L.push("echo.");
 
-  // ===== STEP 5: DIAGBOT.BAT (echo approach with proper escaping) =====
+  // ===== STEP 5: DIAGBOT.BAT =====
   L.push("echo  [5/7] DIAGBOT.bat olusturuluyor...");
   L.push("set \"BAT=%ADIR%\\DIAGBOT.bat\"");
   L.push("> \"%BAT%\" echo @echo off");
