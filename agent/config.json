@@ -1,6 +1,10 @@
 {
   "api_url": "https://diagbot-dashboard.onrender.com",
   "obd_port": "auto",
-  "xentry_path": "C:\\Program Files (x86)\\Mercedes-Benz\\XENTRY",
-  "language": "tr"
+  "obd_baudrate": 115200,
+  "adapter_type": "auto",
+  "xentry_path": "",
+  "language": "tr",
+  "auto_scan_priority": true,
+  "ocr_enabled": true
 }
