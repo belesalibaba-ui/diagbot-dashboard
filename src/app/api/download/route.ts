@@ -39,44 +39,96 @@ export async function GET() {
   L.push("echo  [1/7] Python kontrol...");
   L.push("set \"PY_DIR=C:\\Python312\"");
   L.push("set \"PYTHON_EXE=\"");
-  L.push("if exist \"%PY_DIR%\\python.exe\" set \"PYTHON_EXE=%PY_DIR%\\python.exe\"");
+  L.push("");
+  L.push("REM Tum olasi Python yollarini kontrol et");
+  L.push("if exist \"C:\\Python312\\python.exe\" set \"PYTHON_EXE=C:\\Python312\\python.exe\"");
+  L.push("if \"%PYTHON_EXE%\"==\"\" if exist \"C:\\Python311\\python.exe\" set \"PYTHON_EXE=C:\\Python311\\python.exe\"");
   L.push("if \"%PYTHON_EXE%\"==\"\" if exist \"C:\\Program Files\\Python312\\python.exe\" set \"PYTHON_EXE=C:\\Program Files\\Python312\\python.exe\"");
   L.push("if \"%PYTHON_EXE%\"==\"\" if exist \"C:\\Program Files\\Python311\\python.exe\" set \"PYTHON_EXE=C:\\Program Files\\Python311\\python.exe\"");
+  L.push("if \"%PYTHON_EXE%\"==\"\" if exist \"C:\\Program Files\\Python310\\python.exe\" set \"PYTHON_EXE=C:\\Program Files\\Python310\\python.exe\"");
   L.push("if not \"%PYTHON_EXE%\"==\"\" goto :py_found");
-  L.push("echo  Python bulunamadi - indiriliyor ve kuruluyor...");
-  L.push("echo  (3-5 dakika surebilir)");
+  L.push("");
+  L.push("REM PATH uzerinde ara");
+  L.push("set \"PYTHON_EXE=\"");
+  L.push("for /f \"delims=\" %%i in ('where python 2^>nul') do set \"PYTHON_EXE=%%i\"");
+  L.push("if not \"%PYTHON_EXE%\"==\"\" goto :py_found");
+  L.push("");
+  L.push("REM py launcher kontrol et");
+  L.push("py --version >nul 2>&1");
+  L.push("if !errorlevel! equ 0 (");
+  L.push("    for /f \"delims=\" %%i in ('where py 2^>nul') do (");
+  L.push("        set \"PYTHON_EXE=%%i\"");
+  L.push("        goto :py_found");
+  L.push("    )");
+  L.push(")");
+  L.push("");
+  L.push("REM Python bulunamadi - indir ve kur");
+  L.push("echo  Python bulunamadi - kuruluyor...");
+  L.push("echo  Lutfen bekleyin (2-3 dakika)...");
   L.push("echo.");
-
-  // Write a .ps1 file to handle Python install (avoids escaping issues)
-  L.push("set \"PS1=%TEMP%\\install_python.ps1\"");
-  L.push("echo $ErrorActionPreference = 'Stop' > \"%PS1%\"");
-  L.push("echo [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 >> \"%PS1%\"");
-  L.push("echo $url = 'https://www.python.org/ftp/python/3.12.4/python-3.12.4-amd64.exe' >> \"%PS1%\"");
-  L.push("echo $exe = Join-Path $env:TEMP 'py3124setup.exe' >> \"%PS1%\"");
-  L.push("echo Write-Host '  Indiriliyor...' >> \"%PS1%\"");
-  L.push("echo Invoke-WebRequest -Uri $url -OutFile $exe -UseBasicParsing -TimeoutSec 600 >> \"%PS1%\"");
-  L.push("echo Write-Host '  Kuruluyor...' >> \"%PS1%\"");
-  L.push("echo $proc = Start-Process -FilePath $exe -ArgumentList '/quiet','InstallAllUsers=1','PrependPath=1','Include_pip=1','TargetDir=C:\\Python312' -Wait -PassThru >> \"%PS1%\"");
-  L.push("echo Remove-Item $exe -Force -ErrorAction SilentlyContinue >> \"%PS1%\"");
-  L.push("echo if (Test-Path 'C:\\Python312\\python.exe') { Write-Host '  [OK] Python kuruldu!' } else { Write-Host '  [HATA] Kurulum basarisiz. Cikis:' $proc.ExitCode } >> \"%PS1%\"");
-  L.push("powershell -NoProfile -ExecutionPolicy Bypass -File \"%PS1%\"");
-  L.push("del /f /q \"%PS1%\" >nul 2>&1");
-
-  // Check after install
-  L.push("if exist \"%PY_DIR%\\python.exe\" (");
-  L.push("    set \"PYTHON_EXE=%PY_DIR%\\python.exe\"");
+  L.push("");
+  L.push("set \"PYURL=https://www.python.org/ftp/python/3.12.4/python-3.12.4-amd64.exe\"");
+  L.push("set \"PYTMP=C:\\py3124_setup.exe\"");
+  L.push("");
+  L.push("REM Eski dosyayi sil");
+  L.push("del /f /q \"C:\\py3124_setup.exe\" >nul 2>&1");
+  L.push("");
+  L.push("echo  Indiriliyor (curl)...");
+  L.push("curl.exe --silent --show-error --fail --connect-timeout 30 --max-time 600 -o \"C:\\py3124_setup.exe\" \"%PYURL%\"");
+  L.push("");
+  L.push("if not exist \"C:\\py3124_setup.exe\" (");
+  L.push("    echo.");
+  L.push("    echo  [HATA] Python indirilemedi!");
+  L.push("    echo  Internet baglantinizi kontrol edin.");
+  L.push("    echo.");
+  L.push("    pause");
+  L.push("    exit /b 1");
+  L.push(")");
+  L.push("");
+  L.push("REM Dosya boyutunu kontrol et (en az 20MB olmali)");
+  L.push("for %%A in (\"C:\\py3124_setup.exe\") do set \"PYSIZE=%%~zA\"");
+  L.push("if %PYSIZE% LSS 20000000 (");
+  L.push("    echo.");
+  L.push("    echo  [HATA] Indirilen dosya bozuk (%PYSIZE% byte).");
+  L.push("    echo  Tekrar deneyin.");
+  L.push("    del /f /q \"C:\\py3124_setup.exe\" >nul 2>&1");
+  L.push("    pause");
+  L.push("    exit /b 1");
+  L.push(")");
+  L.push("");
+  L.push("echo  Dosya indirildi (%PYSIZE% byte). Kuruluyor...");
+  L.push("echo  (Lutfen bekleyin, 1-2 dakika surer...)");
+  L.push("echo.");
+  L.push("");
+  L.push("REM Kurulumu baslat ve bekle");
+  L.push("start \"\" /wait \"C:\\py3124_setup.exe\" /quiet InstallAllUsers=1 PrependPath=1 Include_pip=1 TargetDir=C:\\Python312");
+  L.push("");
+  L.push("REM Kurulum dosyasini sil");
+  L.push("del /f /q \"C:\\py3124_setup.exe\" >nul 2>&1");
+  L.push("");
+  L.push("REM Klasor kontrol et");
+  L.push("if exist \"C:\\Python312\\python.exe\" (");
+  L.push("    set \"PYTHON_EXE=C:\\Python312\\python.exe\"");
+  L.push("    echo  [OK] Python kuruldu!");
   L.push("    goto :py_found");
   L.push(")");
+  L.push("");
   L.push("echo.");
   L.push("echo  [HATA] Python kurulamadi.");
-  L.push("echo  Manuel: https://www.python.org/downloads/");
-  L.push("echo  Kurulumda 'Add Python to PATH' isaretleyin.");
+  L.push("echo.");
+  L.push("echo  LUTFEN SU ADIMLARI MANUEL YAPIN:");
+  L.push("echo  1. Tarayicinizi acin");
+  L.push("echo  2. Adres cubuguna yazin: python.org/downloads");
+  L.push("echo  3. Python 3.12 indirin");
+  L.push("echo  4. Kurulumda 'Add Python to PATH' kutusunu isaretleyin");
+  L.push("echo  5. Install Now butonuna tiklayin");
+  L.push("echo  6. Kurulum bittikten sonra bu KURULUM.bat dosyasini tekrar calistirin");
   L.push("echo.");
   L.push("pause");
   L.push("exit /b 1");
-
+  L.push("");
   L.push(":py_found");
-  L.push("echo  [OK] %PYTHON_EXE%");
+  L.push("echo  [OK] Python: %PYTHON_EXE%");
   L.push("\"%PYTHON_EXE%\" --version 2>nul");
   L.push("echo.");
 
@@ -85,7 +137,7 @@ export async function GET() {
   L.push("\"%PYTHON_EXE%\" -m pip install --quiet --upgrade pip 2>nul");
   L.push("\"%PYTHON_EXE%\" -m pip install --quiet pyserial pyautogui Pillow pygetwindow colorama requests pyperclip 2>nul");
   L.push("if !errorlevel! neq 0 (");
-  L.push("    echo  Tekrar deneniyor...");
+  L.push("    echo  Paketler tekrar deneniyor...");
   L.push("    \"%PYTHON_EXE%\" -m pip install pyserial pyautogui Pillow pygetwindow colorama requests pyperclip");
   L.push(")");
   L.push("echo  [OK]");
@@ -99,23 +151,17 @@ export async function GET() {
   L.push("echo  [OK] %ADIR%");
   L.push("echo.");
 
-  // ===== STEP 4: DOWNLOAD FILES =====
+  // ===== STEP 4: DOWNLOAD FILES (curl.exe - no PowerShell) =====
   L.push("echo  [4/7] Dosyalar indiriliyor...");
   const b = appUrl;
-
-  // Write a .ps1 to download all files at once
-  L.push("set \"DL1=%TEMP%\\download_files.ps1\"");
-  L.push("echo $base = '" + b + "' > \"%DL1%\"");
-  L.push("echo $dir = '%ADIR%' >> \"%DL1%\"");
-  L.push("echo $files = @('obd_scanner.py','screen_automator.py','reporter.py','xentry_agent.py','config.json') >> \"%DL1%\"");
-  L.push("echo foreach ($f in $files) { >> \"%DL1%\"");
-  L.push("echo     $url = \"$base/api/agent/files/$f\" >> \"%DL1%\"");
-  L.push("echo     $out = Join-Path $dir $f >> \"%DL1%\"");
-  L.push("echo     Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing -TimeoutSec 120 >> \"%DL1%\"");
-  L.push("echo } >> \"%DL1%\"");
-  L.push("echo Write-Host '  [OK]' >> \"%DL1%\"");
-  L.push("powershell -NoProfile -ExecutionPolicy Bypass -File \"%DL1%\"");
-  L.push("del /f /q \"%DL1%\" >nul 2>&1");
+  const files = [
+    "obd_scanner.py", "screen_automator.py", "reporter.py",
+    "xentry_agent.py", "config.json"
+  ];
+  for (const f of files) {
+    L.push("curl.exe --silent --fail --connect-timeout 15 --max-time 120 -o \"%ADIR%\\" + f + "\" \"" + b + "/api/agent/files/" + f + "\"");
+  }
+  L.push("echo  [OK]");
   L.push("echo.");
 
   // ===== STEP 5: DIAGBOT.BAT =====
@@ -127,6 +173,7 @@ export async function GET() {
   L.push(">> \"%BAT%\" echo cd /d \"%%~dp0\"");
   L.push(">> \"%BAT%\" echo set \"PY=\"");
   L.push(">> \"%BAT%\" echo if exist \"C:\\Python312\\python.exe\" set \"PY=C:\\Python312\\python.exe\"");
+  L.push(">> \"%BAT%\" echo if exist \"C:\\Python311\\python.exe\" set \"PY=C:\\Python311\\python.exe\"");
   L.push(">> \"%BAT%\" echo if exist \"C:\\Program Files\\Python312\\python.exe\" set \"PY=C:\\Program Files\\Python312\\python.exe\"");
   L.push(">> \"%BAT%\" echo if exist \"C:\\Program Files\\Python311\\python.exe\" set \"PY=C:\\Program Files\\Python311\\python.exe\"");
   L.push(">> \"%BAT%\" echo if \"%%PY%%\"==\"\" echo HATA: Python bulunamadi");
@@ -139,8 +186,19 @@ export async function GET() {
 
   // ===== STEP 6: SHORTCUTS =====
   L.push("echo  [6/7] Kisayollar...");
-  L.push("powershell -NoProfile -Command \"$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut([Environment]::GetFolderPath('Desktop')+'\\XENTRY Agent.lnk');$s.TargetPath='%ADIR%\\DIAGBOT.bat';$s.WorkingDirectory='%ADIR%';$s.IconLocation='shell32.dll,21';$s.Save()\"");
-  L.push("powershell -NoProfile -Command \"$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut([Environment]::GetFolderPath('Desktop')+'\\XENTRY Web Panel.lnk');$s.TargetPath='" + b + "';$s.IconLocation='shell32.dll,14';$s.Save()\"");
+  L.push("set \"PSLINK=%TEMP%\\mklink.ps1\"");
+  L.push("echo $w = New-Object -ComObject WScript.Shell > \"%PSLINK%\"");
+  L.push("echo $s = $w.CreateShortcut([Environment]::GetFolderPath('Desktop') + '\\XENTRY Agent.lnk') >> \"%PSLINK%\"");
+  L.push("echo $s.TargetPath = '%ADIR%\\DIAGBOT.bat' >> \"%PSLINK%\"");
+  L.push("echo $s.WorkingDirectory = '%ADIR%' >> \"%PSLINK%\"");
+  L.push("echo $s.IconLocation = 'shell32.dll,21' >> \"%PSLINK%\"");
+  L.push("echo $s.Save() >> \"%PSLINK%\"");
+  L.push("echo $s2 = $w.CreateShortcut([Environment]::GetFolderPath('Desktop') + '\\XENTRY Web Panel.lnk') >> \"%PSLINK%\"");
+  L.push("echo $s2.TargetPath = '" + b + "' >> \"%PSLINK%\"");
+  L.push("echo $s2.IconLocation = 'shell32.dll,14' >> \"%PSLINK%\"");
+  L.push("echo $s2.Save() >> \"%PSLINK%\"");
+  L.push("powershell -NoProfile -ExecutionPolicy Bypass -File \"%PSLINK%\"");
+  L.push("del /f /q \"%PSLINK%\" >nul 2>&1");
   L.push("echo  [OK]");
   L.push("echo.");
 
