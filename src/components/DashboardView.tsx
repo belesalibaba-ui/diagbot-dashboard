@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import {
   Table,
   TableHeader,
@@ -45,20 +46,29 @@ function StatCard({ title, value, icon, trend, color }: StatCardProps) {
 
 interface Session {
   id: string
-  vehicleId: string | null
   status: string
   startedAt: string
   completedAt: string | null
+  vehicle: { vin: string; brand: string; model: string | null } | null
+  _count: { faultCodes: number; testResults: number; reports: number }
+}
+
+interface DiagnosisReport {
+  id: string
+  title: string
+  summary: string
+  createdAt: string
 }
 
 export default function DashboardView() {
   const { user, setView } = useAuthStore()
   const [sessions, setSessions] = useState<Session[]>([])
+  const [reports, setReports] = useState<DiagnosisReport[]>([])
   const [stats, setStats] = useState({
     totalSessions: 0,
     totalVehicles: 0,
     activeFaults: 0,
-    passedTests: 0,
+    completedDiag: 0,
   })
   const [loading, setLoading] = useState(true)
 
@@ -73,9 +83,11 @@ export default function DashboardView() {
         fetch('/api/vehicles'),
       ])
 
+      let sessionsData: Session[] = []
       if (sessionsRes.ok) {
-        const sessionsData = await sessionsRes.json()
-        setSessions(sessionsData.sessions || sessionsData || [])
+        const data = await sessionsRes.json()
+        sessionsData = data.sessions || data || []
+        setSessions(sessionsData)
       }
       if (vehiclesRes.ok) {
         const vehiclesData = await vehiclesRes.json()
@@ -84,30 +96,45 @@ export default function DashboardView() {
           totalVehicles: vehiclesData.total || vehiclesData.length || 0,
         }))
       }
+
+      // Calculate stats from sessions
+      const totalSessions = sessionsData.length
+      const completedDiag = sessionsData.filter(s => s.status === 'completed').length
+      const activeFaults = sessionsData.reduce((sum, s) => sum + s._count.faultCodes, 0)
+
+      setStats(prev => ({
+        ...prev,
+        totalSessions: prev.totalSessions || totalSessions,
+        activeFaults: prev.activeFaults || activeFaults,
+        completedDiag: prev.completedDiag || completedDiag,
+      }))
+
+      // Extract recent reports from sessions (completed ones)
+      const recentCompleted = sessionsData
+        .filter(s => s.status === 'completed' && s._count.reports > 0)
+        .slice(0, 5)
+
+      setReports(recentCompleted.map(s => ({
+        id: s.id,
+        title: `Teşhis Raporu - ${s.vehicle?.vin || s.id.slice(0, 8)}`,
+        summary: `${s._count.faultCodes} arıza kodu analiz edildi`,
+        createdAt: s.startedAt,
+      })))
     } catch {
       // Use demo data
+      setStats({
+        totalSessions: 0,
+        totalVehicles: 0,
+        activeFaults: 0,
+        completedDiag: 0,
+      })
     } finally {
       setLoading(false)
-      setStats(prev => ({
-        totalSessions: prev.totalSessions || 24,
-        totalVehicles: prev.totalVehicles || 3,
-        activeFaults: prev.activeFaults || 7,
-        passedTests: prev.passedTests || 156,
-      }))
     }
   }
 
-  const demoSessions: Session[] = [
-    { id: '1', vehicleId: 'v1', status: 'completed', startedAt: '2025-01-15T10:30:00', completedAt: '2025-01-15T11:45:00' },
-    { id: '2', vehicleId: 'v2', status: 'active', startedAt: '2025-01-15T14:00:00', completedAt: null },
-    { id: '3', vehicleId: 'v3', status: 'completed', startedAt: '2025-01-14T09:00:00', completedAt: '2025-01-14T10:20:00' },
-    { id: '4', vehicleId: 'v1', status: 'completed', startedAt: '2025-01-13T16:00:00', completedAt: '2025-01-13T17:15:00' },
-    { id: '5', vehicleId: 'v2', status: 'failed', startedAt: '2025-01-12T11:00:00', completedAt: '2025-01-12T11:30:00' },
-  ]
-
-  const displaySessions = sessions.length > 0 ? sessions : demoSessions
   const displayStats = loading
-    ? { totalSessions: '—', totalVehicles: '—', activeFaults: '—', passedTests: '—' }
+    ? { totalSessions: '—', totalVehicles: '—', activeFaults: '—', completedDiag: '—' }
     : stats
 
   const getStatusBadge = (status: string) => {
@@ -145,17 +172,24 @@ export default function DashboardView() {
             Hoş Geldiniz, {user?.name || 'Kullanıcı'}
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Mercedes-Benz araç tanı paneline hoş geldiniz
+            XENTRY DiagBot Pro — Mercedes-Benz AI Teşhis Sistemi
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setView('sessions')} className="bg-gradient-to-r from-gray-600 to-gray-500 hover:from-gray-500 hover:to-gray-400 text-white font-medium rounded-xl shadow-lg shadow-gray-500/20 h-10">
+          <Button
+            onClick={() => setView('sessions')}
+            className="bg-gradient-to-r from-gray-600 to-gray-500 hover:from-gray-500 hover:to-gray-400 text-white font-medium rounded-xl shadow-lg shadow-gray-500/20 h-10"
+          >
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
             </svg>
             Yeni Tanı Başlat
           </Button>
-          <Button onClick={() => setView('vehicles')} variant="outline" className="border-slate-600/50 text-slate-300 hover:bg-slate-800/50 hover:text-white rounded-xl h-10">
+          <Button
+            onClick={() => setView('vehicles')}
+            variant="outline"
+            className="border-slate-600/50 text-slate-300 hover:bg-slate-800/50 hover:text-white rounded-xl h-10"
+          >
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
@@ -169,7 +203,6 @@ export default function DashboardView() {
         <StatCard
           title="Toplam Oturum"
           value={displayStats.totalSessions}
-          trend="+12% bu hafta"
           color="bg-gray-500/10"
           icon={
             <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -180,7 +213,6 @@ export default function DashboardView() {
         <StatCard
           title="Araç Sayısı"
           value={displayStats.totalVehicles}
-          trend="+1 yeni"
           color="bg-emerald-500/10"
           icon={
             <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -189,74 +221,167 @@ export default function DashboardView() {
           }
         />
         <StatCard
-          title="Aktif Hata Kodu"
-          value={displayStats.activeFaults}
+          title="AI Teşhis"
+          value={displayStats.completedDiag}
           color="bg-amber-500/10"
           icon={
             <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
             </svg>
           }
         />
         <StatCard
-          title="Başarılı Test"
-          value={displayStats.passedTests}
-          trend="Toplam"
-          color="bg-emerald-500/10"
+          title="Tespit Edilen Hata"
+          value={displayStats.activeFaults}
+          color="bg-red-500/10"
           icon={
-            <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
           }
         />
       </div>
 
+      {/* AI Diagnostic CTA */}
+      <Card className="bg-gradient-to-br from-slate-800/60 to-slate-800/30 border-gray-500/20 overflow-hidden">
+        <CardContent className="p-0">
+          <div className="flex flex-col sm:flex-row items-center gap-6 p-6">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gray-500/30 to-gray-600/20 border border-gray-500/20 flex items-center justify-center shrink-0">
+              <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <h2 className="text-lg font-bold text-white">AI ile Mercedes-Benz Teşhisi</h2>
+              <p className="text-sm text-slate-400 mt-1">
+                Arıza kodlarını girin, yapay zeka analiz etsin. Nedenler, çözümler, maliyet tahminleri ve aciliyet derecesi otomatik oluşturulsun.
+              </p>
+            </div>
+            <Button
+              onClick={() => setView('sessions')}
+              className="bg-gradient-to-r from-gray-600 to-gray-500 hover:from-gray-500 hover:to-gray-400 text-white font-medium rounded-xl px-6 h-11 shrink-0"
+            >
+              Hemen Başla
+              <svg className="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Reports */}
+      {reports.length > 0 && (
+        <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-white text-base">Son Teşhis Raporları</CardTitle>
+              <Button
+                variant="ghost"
+                onClick={() => setView('sessions')}
+                className="text-xs text-slate-500 hover:text-slate-300 h-7"
+              >
+                Tümünü Gör
+                <svg className="w-3 h-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-slate-700/30">
+              {reports.map(r => (
+                <div key={r.id} className="px-5 py-3 flex items-center justify-between hover:bg-slate-800/30 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                      <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm text-white truncate">{r.title}</p>
+                      <p className="text-xs text-slate-500">{r.summary}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-slate-500 shrink-0 ml-3">
+                    {formatDate(r.createdAt)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Recent Sessions */}
       <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40">
         <CardHeader className="pb-3">
-          <CardTitle className="text-white text-lg">Son Oturumlar</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-white text-base">Son Oturumlar</CardTitle>
+            {sessions.length > 0 && (
+              <Button
+                variant="ghost"
+                onClick={() => setView('sessions')}
+                className="text-xs text-slate-500 hover:text-slate-300 h-7"
+              >
+                Tümünü Gör
+                <svg className="w-3 h-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-slate-700/40 hover:bg-transparent">
-                  <TableHead className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Oturum ID</TableHead>
-                  <TableHead className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Araç</TableHead>
-                  <TableHead className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Durum</TableHead>
-                  <TableHead className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Başlangıç</TableHead>
-                  <TableHead className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Bitiş</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displaySessions.map((session) => (
-                  <TableRow key={session.id} className="border-slate-700/30 hover:bg-slate-800/40">
-                    <TableCell className="text-sm text-slate-300 font-mono">
-                      #{session.id.slice(0, 8)}
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-300">
-                      {session.vehicleId
-                        ? `MB-${session.vehicleId.slice(0, 4).toUpperCase()}`
-                        : '—'}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(session.status)}</TableCell>
-                    <TableCell className="text-sm text-slate-400">
-                      {formatDate(session.startedAt)}
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-400">
-                      {session.completedAt ? formatDate(session.completedAt) : '—'}
-                    </TableCell>
+          {sessions.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-slate-700/40 hover:bg-transparent">
+                    <TableHead className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Araç</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Durum</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-semibold uppercase tracking-wider hidden sm:table-cell">Hata Kodu</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Tarih</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {sessions.slice(0, 5).map((session) => (
+                    <TableRow
+                      key={session.id}
+                      className="border-slate-700/30 hover:bg-slate-800/40 cursor-pointer"
+                      onClick={() => setView('sessions')}
+                    >
+                      <TableCell className="text-sm text-slate-300">
+                        {session.vehicle
+                          ? `${session.vehicle.brand} ${session.vehicle.model || ''}`
+                          : 'Araç Seçilmedi'}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(session.status)}</TableCell>
+                      <TableCell className="text-sm text-slate-400 hidden sm:table-cell">
+                        {session._count.faultCodes > 0 ? `${session._count.faultCodes} kod` : '—'}
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-400">
+                        {formatDate(session.startedAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="p-8 text-center">
+              <p className="text-sm text-slate-500">Henüz oturum yok. İlk tanınızı başlatın!</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card onClick={() => setView('sessions')} className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40 hover:border-slate-600/50 transition-colors cursor-pointer group">
+        <Card
+          onClick={() => setView('sessions')}
+          className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40 hover:border-gray-500/30 transition-colors cursor-pointer group"
+        >
           <CardContent className="p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-500/20 to-gray-600/10 border border-gray-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
               <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -265,11 +390,14 @@ export default function DashboardView() {
             </div>
             <div>
               <p className="text-sm font-semibold text-white">Yeni Tanı Başlat</p>
-              <p className="text-xs text-slate-500">Araç tanı oturumu</p>
+              <p className="text-xs text-slate-500">AI ile arıza kodu analiz</p>
             </div>
           </CardContent>
         </Card>
-        <Card onClick={() => setView('vehicles')} className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40 hover:border-slate-600/50 transition-colors cursor-pointer group">
+        <Card
+          onClick={() => setView('vehicles')}
+          className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40 hover:border-emerald-500/30 transition-colors cursor-pointer group"
+        >
           <CardContent className="p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
               <svg className="w-6 h-6 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -282,7 +410,10 @@ export default function DashboardView() {
             </div>
           </CardContent>
         </Card>
-        <Card onClick={() => setView('sessions')} className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40 hover:border-slate-600/50 transition-colors cursor-pointer group">
+        <Card
+          onClick={() => setView('sessions')}
+          className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40 hover:border-amber-500/30 transition-colors cursor-pointer group"
+        >
           <CardContent className="p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
               <svg className="w-6 h-6 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -291,11 +422,36 @@ export default function DashboardView() {
             </div>
             <div>
               <p className="text-sm font-semibold text-white">Raporlar</p>
-              <p className="text-xs text-slate-500">Tanı raporları</p>
+              <p className="text-xs text-slate-500">Geçmiş teşhis raporları</p>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* How it works */}
+      <Card className="bg-slate-800/40 backdrop-blur-sm border-slate-700/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-white text-base">Nasıl Çalışır?</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            {[
+              { step: '1', title: 'Araç Seç', desc: 'Tanı yapacağınız Mercedes-Benz aracını seçin veya yeni ekleyin', icon: '🚗' },
+              { step: '2', title: 'Kod Gir', desc: 'XENTRY cihazından okunan arıza kodlarını girin', icon: '🔢' },
+              { step: '3', title: 'AI Analiz', desc: 'Yapay zeka her kodu analiz eder ve nedenler/çözümler sunar', icon: '🤖' },
+              { step: '4', title: 'Rapor Al', desc: 'Detaylı teşhis raporunu yazdırın veya paylaşın', icon: '📄' },
+            ].map(item => (
+              <div key={item.step} className="text-center p-3">
+                <div className="w-10 h-10 mx-auto rounded-xl bg-slate-700/40 flex items-center justify-center text-xl mb-2">
+                  {item.icon}
+                </div>
+                <p className="text-sm font-semibold text-white">{item.title}</p>
+                <p className="text-xs text-slate-500 mt-1">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
