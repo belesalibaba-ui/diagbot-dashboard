@@ -37,7 +37,6 @@ export async function GET() {
 
   // ===== STEP 1: PYTHON =====
   L.push("echo  [1/7] Python kontrol...");
-  L.push("set \"PY_DIR=C:\\Python312\"");
   L.push("set \"PYTHON_EXE=\"");
   L.push("if exist \"C:\\Python312\\python.exe\" set \"PYTHON_EXE=C:\\Python312\\python.exe\"");
   L.push("if \"%PYTHON_EXE%\"==\"\" if exist \"C:\\Python311\\python.exe\" set \"PYTHON_EXE=C:\\Python311\\python.exe\"");
@@ -45,83 +44,128 @@ export async function GET() {
   L.push("if \"%PYTHON_EXE%\"==\"\" if exist \"C:\\Program Files\\Python311\\python.exe\" set \"PYTHON_EXE=C:\\Program Files\\Python311\\python.exe\"");
   L.push("if not \"%PYTHON_EXE%\"==\"\" goto :py_found");
   L.push("");
+  L.push("REM PATH uzerinde ara");
   L.push("where python >nul 2>&1");
   L.push("if !errorlevel! equ 0 (");
-  L.push("    for /f \"delims=\" %%i in ('where python 2^>nul') do (");
-  L.push("        set \"PYTHON_EXE=%%i\"");
-  L.push("        goto :py_found");
-  L.push("    )");
+  L.push("    for /f \"delims=\" %%i in ('where python 2^>nul') do set \"PYTHON_EXE=%%i\"");
+  L.push("    if not \"!PYTHON_EXE!\"==\"\" goto :py_found");
   L.push(")");
   L.push("");
   L.push("py --version >nul 2>&1");
   L.push("if !errorlevel! equ 0 (");
-  L.push("    for /f \"delims=\" %%i in ('where py 2^>nul') do (");
-  L.push("        set \"PYTHON_EXE=%%i\"");
-  L.push("        goto :py_found");
-  L.push("    )");
+  L.push("    for /f \"delims=\" %%i in ('where py 2^>nul') do set \"PYTHON_EXE=%%i\"");
+  L.push("    if not \"!PYTHON_EXE!\"==\"\" goto :py_found");
   L.push(")");
   L.push("");
-  L.push("echo  Python bulunamadi - kuruluyor...");
-  L.push("echo  (2-3 dakika surebilir, kapanmayin)");
+  L.push("REM Python yok - indir ve kur");
+  L.push("echo  Python bulunamadi - kurulacak.");
+  L.push("echo  LUTFEN HIC BISEYE DOKUNMAYIN!");
   L.push("echo.");
   L.push("");
   L.push("set \"PYURL=https://www.python.org/ftp/python/3.12.4/python-3.12.4-amd64.exe\"");
-  L.push("set \"PYTMP=C:\\py3124_setup.exe\"");
+  L.push("set \"PYFILE=C:\\py3124_setup.exe\"");
   L.push("del /f /q \"C:\\py3124_setup.exe\" >nul 2>&1");
   L.push("");
-  L.push("echo  [1/3] Indiriliyor...");
-  L.push("certutil -urlcache -split -f \"%PYURL%\" \"C:\\py3124_setup.exe\" >nul 2>&1");
+  L.push("echo  ============================================");
+  L.push("echo   ADIM 1 : Python indiriliyor");
+  L.push("echo   LUTFEN BEKLEYIN (1-2 dakika)");
+  L.push("echo   HIC BISEYE DOKUNMAYIN!");
+  L.push("echo  ============================================");
+  L.push("echo.");
+  L.push("");
+  L.push("REM Indir: certutil ile");
+  L.push("certutil -urlcache -split -f \"%PYURL%\" \"C:\\py3124_setup.exe\"");
+  L.push("");
   L.push("if not exist \"C:\\py3124_setup.exe\" (");
-  L.push("    echo  [UYARI] certutil basarisiz, curl deneniyor...");
-  L.push("    curl.exe -o \"C:\\py3124_setup.exe\" \"%PYURL%\" >nul 2>&1");
-  L.push(")");
-  L.push("if not exist \"C:\\py3124_setup.exe\" (");
-  L.push("    echo  [UYARI] curl basarisiz, bitsadmin deneniyor...");
-  L.push("    bitsadmin /transfer pyjob /download /priority normal \"%PYURL%\" \"C:\\py3124_setup.exe\" >nul 2>&1");
+  L.push("    echo  certutil basarisiz, curl deneniyor...");
+  L.push("    curl.exe -L -o \"C:\\py3124_setup.exe\" \"%PYURL%\"");
+  L.push("    if not exist \"C:\\py3124_setup.exe\" (");
+  L.push("        echo  curl basarisiz, bitsadmin deneniyor...");
+  L.push("        bitsadmin /transfer pyjob /download /priority normal \"%PYURL%\" \"C:\\py3124_setup.exe\"");
+  L.push("    )");
   L.push(")");
   L.push("");
   L.push("if not exist \"C:\\py3124_setup.exe\" (");
   L.push("    echo.");
   L.push("    echo  [HATA] Python indirilemedi!");
   L.push("    echo  Internet baglantinizi kontrol edin.");
-  L.push("    echo.");
-  L.push("    echo  VEYA manuel indirin:");
-  L.push("    echo  1. Tarayicida acin: python.org/downloads");
-  L.push("    echo  2. Python 3.12 indirip kurun");
-  L.push("    echo  3. Kurulumda 'Add Python to PATH' isaretleyin");
-  L.push("    echo  4. Bu dosyayi tekrar calistirin");
+  L.push("    echo  Veya tarayicidan python.org/downloads indirin.");
   L.push("    echo.");
   L.push("    pause");
   L.push("    exit /b 1");
   L.push(")");
   L.push("");
+  L.push("REM Dosya boyutu kontrol (25MB+ olmali)");
   L.push("for %%A in (\"C:\\py3124_setup.exe\") do set \"PYSIZE=%%~zA\"");
-  L.push("echo  Indirildi (%PYSIZE% byte).");
+  L.push("echo  Indirildi: %PYSIZE% byte");
   L.push("if %PYSIZE% LSS 20000000 (");
-  L.push("    echo  [HATA] Dosya bozuk. Tekrar deneyin.");
+  L.push("    echo  Dosya cok kucuk, bozuk olabilir. Silip tekrar indiriyorum...");
   L.push("    del /f /q \"C:\\py3124_setup.exe\" >nul 2>&1");
-  L.push("    pause");
-  L.push("    exit /b 1");
+  L.push("    timeout /t 2 /nobreak >nul");
+  L.push("    certutil -urlcache -split -f \"%PYURL%\" \"C:\\py3124_setup.exe\"");
   L.push(")");
+  L.push("echo.");
   L.push("");
-  L.push("echo  [2/3] Kuruluyor (lutfen bekleyin)...");
-  L.push("start \"\" /wait \"C:\\py3124_setup.exe\" /quiet InstallAllUsers=1 PrependPath=1 Include_pip=1 TargetDir=C:\\Python312");
+  L.push("echo  ============================================");
+  L.push("echo   ADIM 2 : Python kuruluyor");
+  L.push("echo   EKRANDA KURULUM PENCERESI ACILACAK");
+  L.push("echo   LUTFEN BEKLEYIN HIC BISEYE DOKUNMAYIN!");
+  L.push("echo   (1-2 dakika surecektir)");
+  L.push("echo  ============================================");
+  L.push("echo.");
+  L.push("");
+  L.push("REM 3 saniye bekle (dosya kilitlenmesin)");
+  L.push("timeout /t 3 /nobreak >nul");
+  L.push("");
+  L.push("REM Kurulum: /passive = ilerleme cubugu gosterir, otomatik kapanir");
+  L.push("start \"Python Kurulum\" /wait \"C:\\py3124_setup.exe\" /passive InstallAllUsers=1 PrependPath=1 Include_pip=1 TargetDir=C:\\Python312");
+  L.push("");
+  L.push("REM 5 saniye bekle (kayitlerin yazilmasi icin)");
+  L.push("timeout /t 5 /nobreak >nul");
+  L.push("");
+  L.push("REM Installer dosyasini sil");
   L.push("del /f /q \"C:\\py3124_setup.exe\" >nul 2>&1");
   L.push("");
-  L.push("echo  [3/3] Dogrulaniyor...");
+  L.push("echo  ============================================");
+  L.push("echo   ADIM 3 : Kurulum dogrulaniyor");
+  L.push("echo  ============================================");
+  L.push("echo.");
+  L.push("");
   L.push("if exist \"C:\\Python312\\python.exe\" (");
   L.push("    set \"PYTHON_EXE=C:\\Python312\\python.exe\"");
-  L.push("    echo  [OK] Python kuruldu!");
+  L.push("    echo  [OK] Python basariyla kuruldu!");
+  L.push("    goto :py_found");
+  L.push(")");
+  L.push("if exist \"C:\\Program Files\\Python312\\python.exe\" (");
+  L.push("    set \"PYTHON_EXE=C:\\Program Files\\Python312\\python.exe\"");
+  L.push("    echo  [OK] Python basariyla kuruldu!");
+  L.push("    goto :py_found");
+  L.push(")");
+  L.push("");
+  L.push("REM Kurulum basarisiz - tekrar dene");
+  L.push("echo  [UYARI] Python kurulamadi, tekrar deneniyor...");
+  L.push("echo.");
+  L.push("if exist \"C:\\py3124_setup.exe\" (");
+  L.push("    start \"Python Kurulum 2\" /wait \"C:\\py3124_setup.exe\" /passive InstallAllUsers=1 PrependPath=1 Include_pip=1 TargetDir=C:\\Python312");
+  L.push("    timeout /t 5 /nobreak >nul");
+  L.push("    del /f /q \"C:\\py3124_setup.exe\" >nul 2>&1");
+  L.push(")");
+  L.push("");
+  L.push("if exist \"C:\\Python312\\python.exe\" (");
+  L.push("    set \"PYTHON_EXE=C:\\Python312\\python.exe\"");
+  L.push("    echo  [OK] Python basariyla kuruldu!");
   L.push("    goto :py_found");
   L.push(")");
   L.push("");
   L.push("echo.");
   L.push("echo  [HATA] Python kurulamadi.");
-  L.push("echo  LUTFEN MANUEL YAPIN:");
-  L.push("  1. python.org/downloads adresine gidin");
-  L.push("  2. Python 3.12 indirip kurun");
+  L.push("echo.");
+  L.push("echo  MANUEL COZUM:");
+  L.push("  1. Dosya Gezgini ile C:\\ klasorunu acin");
+  L.push("  2. py3124_setup.exe varsa uzerine cift tiklayin");
   L.push("  3. Kurulumda 'Add Python to PATH' isaretleyin");
-  L.push("  4. Bu dosyayi tekrar calistirin");
+  L.push("  4. Install Now butonuna tiklayin");
+  L.push("  5. Kurulum bitince KURULUM.bat tekrar calistirin");
   L.push("echo.");
   L.push("pause");
   L.push("exit /b 1");
@@ -132,13 +176,14 @@ export async function GET() {
   L.push("echo.");
 
   // ===== STEP 2: PIP =====
-  L.push("echo  [2/7] Paketler kuruluyor...");
+  L.push("echo  [2/7] Python paketleri kuruluyor...");
   L.push("\"%PYTHON_EXE%\" -m pip install --quiet --upgrade pip 2>nul");
   L.push("\"%PYTHON_EXE%\" -m pip install --quiet pyserial pyautogui Pillow pygetwindow colorama requests pyperclip 2>nul");
   L.push("if !errorlevel! neq 0 (");
+  L.push("    echo  Paketler yeniden kuruluyor...");
   L.push("    \"%PYTHON_EXE%\" -m pip install pyserial pyautogui Pillow pygetwindow colorama requests pyperclip");
   L.push(")");
-  L.push("echo  [OK]");
+  L.push("echo  [OK] Paketler tamam.");
   L.push("echo.");
 
   // ===== STEP 3: FOLDER =====
@@ -149,14 +194,14 @@ export async function GET() {
   L.push("echo  [OK] %ADIR%");
   L.push("echo.");
 
-  // ===== STEP 4: DOWNLOAD FILES (certutil - most reliable) =====
+  // ===== STEP 4: DOWNLOAD FILES =====
   L.push("echo  [4/7] Dosyalar indiriliyor...");
   const base = appUrl;
-  const files = [
+  const dlFiles = [
     "obd_scanner.py", "screen_automator.py", "reporter.py",
     "xentry_agent.py", "config.json"
   ];
-  for (const f of files) {
+  for (const f of dlFiles) {
     L.push("certutil -urlcache -split -f \"" + base + "/api/agent/files/" + f + "\" \"%ADIR%\\" + f + "\" >nul 2>&1");
   }
   L.push("echo  [OK]");
@@ -183,7 +228,7 @@ export async function GET() {
   L.push("echo.");
 
   // ===== STEP 6: SHORTCUTS =====
-  L.push("echo  [6/7] Kisayollar...");
+  L.push("echo  [6/7] Kisayollar olusturuluyor...");
   L.push("set \"PSLINK=%TEMP%\\mklink.ps1\"");
   L.push("echo $w = New-Object -ComObject WScript.Shell > \"%PSLINK%\"");
   L.push("echo $s = $w.CreateShortcut([Environment]::GetFolderPath('Desktop') + '\\XENTRY Agent.lnk') >> \"%PSLINK%\"");
